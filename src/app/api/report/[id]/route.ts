@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/app/lib/db';
 
-export default async function handler(req: NextRequest, res: NextResponse) {
-  if (req.method === 'GET') {
+export default async function GET(req: NextRequest, res: NextResponse) {
     const {data: report, error} = await supabase
     .from('reports')
     .select('report_json, expires_at')
@@ -13,5 +12,5 @@ export default async function handler(req: NextRequest, res: NextResponse) {
     }
 
     return NextResponse.json(report.report_json);
-  }
+
 }
