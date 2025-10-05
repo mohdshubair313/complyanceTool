@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/db'; // Earlier lib/db.ts se (or @/app/lib/db if path different)
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient(); // Async client (server-safe with cookies)
     const { data: report, error } = await supabase
