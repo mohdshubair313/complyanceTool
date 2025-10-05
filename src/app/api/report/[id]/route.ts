@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/db'; // Earlier lib/db.ts se (or @/app/lib/db if path different)
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }  // Dynamic params for [id]
-) {
-  const { id } = params; // Extract id from URL (e.g., /api/report/abc123)
-
-  if (!id) {
-    return NextResponse.json({ error: 'ID required' }, { status: 400 });
-  }
-
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient(); // Async client (server-safe with cookies)
     const { data: report, error } = await supabase
       .from('reports')
       .select('report_json, expires_at')
-      .eq('id', id)  // Match specific report by ID
       .single();  // One row only
 
     if (error || !report) {

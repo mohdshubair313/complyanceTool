@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import Papa from 'papaparse';
-import supabase from '@/app/lib/db'; // Supabase client
+import {createClient} from '@/app/lib/db'; // Supabase client
 import { z } from 'zod';
 
 const schema = z.object({
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const uploadId = uuidv4();
+    const supabase = await createClient();
     const { error } = await supabase
       .from('uploads')
       .insert({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabase from '@/app/lib/db';
+import {createClient} from '@/app/lib/db';
 import { runFieldMapping } from '@/app/lib/mapper';
 import { runRules } from '@/app/lib/rules';
 import { calculateScores } from '@/app/lib/scorer';
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { uploadId, questionnaire } = schema.parse(body);
 
+    const supabase = await createClient();
     const { data: upload, error } = await supabase
       .from('uploads')
       .select('country, erp, rows_parsed, data')
