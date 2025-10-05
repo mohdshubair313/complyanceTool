@@ -1,16 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabase from '@/app/lib/db';
+import { createClient } from '@/app/lib/db'; // Earlier lib/db.ts se (or @/app/lib/db if path different)
 
-export default async function GET(req: NextRequest, res: NextResponse) {
-    const {data: report, error} = await supabase
-    .from('reports')
-    .select('report_json, expires_at')
-    .single();
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }  // Dynamic params for [id]
+) {
+  const { id } = params; // Extract id from URL (e.g., /api/report/abc123)
 
-    if (error || !report || new Date() > new Date(report.expires_at)) {
-      return NextResponse.json({ error: 'Report not found or expired' }, { status: 404 });
+  if (!id) {
+    return NextResponse.json({ error: 'ID required' }, { status: 400 });
+  }
+
+  try {
+    const supabase = await createClient(); // Async client (server-safe with cookies)
+    const { data: report, error } = await supabase
+      .from('reports')
+      .select('report_json, expires_at')
+      .eq('id', id)  // Match specific report by ID
+      .single();  // One row only
+
+    if (error || !report) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
-    return NextResponse.json(report.report_json);
+    // Expiry check
+    if (new Date() > new Date(report.expires_at)) {
+      return NextResponse.json({ error: 'Report expired' }, { status: 404 });
+    }
 
+    return NextResponse.json(report.report_json);  // Return report data directly
+  } catch (err) {
+    console.error('Report fetch error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
