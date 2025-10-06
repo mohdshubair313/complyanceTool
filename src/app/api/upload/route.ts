@@ -5,8 +5,8 @@ import {createClient} from '@/app/lib/db'; // Supabase client
 import { z } from 'zod';
 
 const schema = z.object({
-  country: z.string().min(1),
-  erp: z.string().min(1),
+  country: z.string().min(1, 'Country required'),
+  erp: z.string().min(1, 'ERP required'),
 });
 
 export async function POST(req: NextRequest) {
@@ -17,34 +17,52 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null;
     const text = formData.get('text') as string | null;
 
+    // Validate inputs
     schema.parse({ country, erp });
 
     let data: any[] = [];
     let rowsParsed = 0;
 
-    // Parsing logic same (Papa/JSON)
+    // Parse file or text
     if (file) {
       const buffer = Buffer.from(await file.arrayBuffer());
       const content = buffer.toString('utf-8');
       if (file.name.endsWith('.csv')) {
-        const parseResult = Papa.parse(content, { header: true });
+        const parseResult = Papa.parse(content, { header: true, skipEmptyLines: true });
+        if (parseResult.errors.length > 0) {
+          return NextResponse.json({ error: 'CSV parse error' }, { status: 400 });
+        }
         data = parseResult.data.slice(0, 200);
         rowsParsed = data.length;
       } else if (file.name.endsWith('.json')) {
-        data = JSON.parse(content).slice(0, 200);
-        rowsParsed = data.length;
+        try {
+          data = JSON.parse(content).slice(0, 200);
+          rowsParsed = data.length;
+        } catch (err) {
+          return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+        }
+      } else {
+        return NextResponse.json({ error: 'Unsupported format. Use CSV or JSON.' }, { status: 400 });
       }
     } else if (text) {
-      // Same as before
-      if (text.trim().startsWith('[')) {
+      try {
+        // Try JSON first
         data = JSON.parse(text).slice(0, 200);
-      } else {
-        const parseResult = Papa.parse(text, { header: true });
+        rowsParsed = data.length;
+      } catch {
+        // Fallback to CSV
+        const parseResult = Papa.parse(text, { header: true, skipEmptyLines: true });
+        if (parseResult.errors.length > 0) {
+          return NextResponse.json({ error: 'Text parse error' }, { status: 400 });
+        }
         data = parseResult.data.slice(0, 200);
+        rowsParsed = data.length;
       }
-      rowsParsed = data.length;
+    } else {
+      return NextResponse.json({ error: 'No file or text provided' }, { status: 400 });
     }
 
+    // Generate ID and save to Supabase
     const uploadId = uuidv4();
     const supabase = await createClient();
     const { error } = await supabase
@@ -54,13 +72,18 @@ export async function POST(req: NextRequest) {
         country,
         erp,
         rows_parsed: rowsParsed,
-        data: data.length ? data : null,
-      });
+        data,  // JSONB in Supabase
+      })
+      .select();  // Optional: Return inserted row
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    }
 
-    return NextResponse.json({ uploadId });
+    return NextResponse.json({ uploadId }, { status: 201 });
   } catch (error) {
+    console.error('Upload error:', error);
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 }

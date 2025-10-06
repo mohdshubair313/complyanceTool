@@ -26,7 +26,7 @@ export function TablePreview({ data }: Props) {
           <TableHeader>
             <TableRow>
               {headers.map((header) => (
-                <TableHead key={header}>{header}</TableHead>
+                <TableHead className="px-4 py-2" key={header}>{header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>

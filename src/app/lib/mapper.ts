@@ -9,7 +9,7 @@ const GETS_SCHEMA = [
   'seller.name', 'seller.trn', 'seller.country', 'seller.city',
   'buyer.name', 'buyer.trn', 'buyer.country', 'buyer.city',
   'lines.sku', 'lines.description', 'lines.qty', 'lines.unit_price', 'lines.line_total',
-  // Add more up to 25 if needed
+  'lines.vat_rate', 'lines.vat_amount'
 ];
 
 export function runFieldMapping(sampleRow: any): any {
@@ -39,7 +39,9 @@ export function runFieldMapping(sampleRow: any): any {
       const result = fuse.search(normTarget);
       if (result.length > 0) {
         const score = result[0].score ?? 1; // default worst case me null
-        const confidence = 1 - score; // Invert to 0-1 higher better
+        const confidence = Math.max(0, 1 - score); // this ensure that confidence is between 0 and 1
+        // Accept only high confidence matches
+        if (confidence < 0.6) return; // skip low confidence matches
         const candidate = result[0].item; // Matched user field
 
         // Type compatible check
